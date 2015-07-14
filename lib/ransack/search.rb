@@ -1,14 +1,5 @@
 require 'ransack/nodes'
 require 'ransack/context'
-
-if defined?(::ActiveRecord::Base)
-  require 'ransack/adapters/active_record/ransack/context'
-end
-
-if defined?(::Mongoid)
-  require 'ransack/adapters/mongoid/ransack/context'
-end
-
 require 'ransack/naming'
 
 module Ransack
@@ -17,10 +8,10 @@ module Ransack
 
     attr_reader :base, :context
 
-    delegate :object, :klass, :to => :context
+    delegate :object, :klass, to: :context
     delegate :new_grouping, :new_condition,
              :build_grouping, :build_condition,
-             :translate, :to => :base
+             :translate, to: :base
 
     def initialize(object, params = {}, options = {})
       if params.is_a? Hash
@@ -32,7 +23,7 @@ module Ransack
       @context = options[:context] || Context.for(object, options)
       @context.auth_object = options[:auth_object]
       @base = Nodes::Grouping.new(
-        @context, options[:grouping] || Constants::AND
+        @context, options[:grouping] || 'and'.freeze
         )
       @scope_args = {}
       @sorts ||= []
@@ -45,7 +36,7 @@ module Ransack
 
     def build(params)
       collapse_multiparameter_attributes!(params).each do |key, value|
-        if Constants::S_SORTS.include?(key)
+        if %w(s sorts).include?(key)
           send("#{key}=", value)
         elsif base.attribute_method?(key)
           base.send("#{key}=", value)
@@ -100,7 +91,7 @@ module Ransack
 
     def method_missing(method_id, *args)
       method_name = method_id.to_s
-      getter_name = method_name.sub(/=$/, Constants::EMPTY)
+      getter_name = method_name.sub(/=$/, '')
       if base.attribute_method?(getter_name)
         base.send(method_id, *args)
       elsif @context.ransackable_scope?(getter_name, @context.object)
@@ -121,8 +112,8 @@ module Ransack
         [:base, base.inspect]
       ]
       .compact
-      .map { |d| d.join(Constants::COLON_SPACE) }
-      .join(Constants::COMMA_SPACE)
+      .map { |d| d.join(': ') }
+      .join(', ')
 
       "Ransack::Search<#{details}>"
     end
@@ -153,11 +144,11 @@ module Ransack
     end
 
     def collapse_multiparameter_attributes!(attrs)
-      attrs.keys.each do |k|
-        if k.include?(Constants::LEFT_PARENTHESIS)
+      attrs.each_key do |k|
+        if k.include?('(')
           real_attribute, position = k.split(/\(|\)/)
           cast =
-          if Constants::A_S_I.include?(position.last)
+          if %w(a s i).include?(position.last)
             position.last
           else
             nil
@@ -167,7 +158,7 @@ module Ransack
           attrs[real_attribute] ||= []
           attrs[real_attribute][position] =
           if cast
-            if value.blank? && cast == Constants::I
+            if value.blank? && cast == 'i'
               nil
             else
               value.send("to_#{cast}")

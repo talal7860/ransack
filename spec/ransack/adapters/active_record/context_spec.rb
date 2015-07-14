@@ -9,13 +9,6 @@ module Ransack
       describe Context do
         subject { Context.new(Person) }
 
-        if AR_version >= '3.1'
-          it 'has an Active Record alias tracker method' do
-            expect(subject.alias_tracker)
-            .to be_an ::ActiveRecord::Associations::AliasTracker
-          end
-        end
-
         describe '#relation_for' do
           it 'returns relation for given object' do
             expect(subject.object).to be_an ::ActiveRecord::Relation
@@ -49,43 +42,6 @@ module Ransack
               context: shared_context)
             Search.new(Person, { :children_name_eq => 'B' },
               context: shared_context)
-          end
-
-          describe '#join_associations', :if => AR_version <= '4.0' do
-            it 'returns dependent join associations for all searches run
-                against the context' do
-              parents, children = shared_context.join_associations
-
-              expect(children.aliased_table_name).to eq "children_people"
-              expect(parents.aliased_table_name).to eq "parents_people"
-            end
-
-            it 'can be rejoined to execute a valid query' do
-              parents, children = shared_context.join_associations
-
-              expect { Person.joins(parents).joins(children).to_a }
-              .to_not raise_error
-            end
-          end
-
-          describe '#join_sources' do
-            # FIXME: fix this test for Rails 4.2.
-            it 'returns dependent arel join nodes for all searches run against
-            the context',
-            :if => %w(3.1 3.2 4.0 4.1).include?(AR_version) do
-              parents, children = shared_context.join_sources
-
-              expect(children.left.name).to eq "children_people"
-              expect(parents.left.name).to eq "parents_people"
-            end
-
-            it 'can be rejoined to execute a valid query',
-            :if => AR_version >= '3.1' do
-              parents, children = shared_context.join_sources
-
-              expect { Person.joins(parents).joins(children).to_a }
-              .to_not raise_error
-            end
           end
         end
 

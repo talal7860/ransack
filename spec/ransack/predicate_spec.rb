@@ -1,9 +1,6 @@
 require 'spec_helper'
 
 module Ransack
-  TRUE_VALUES  = [true,  1, '1', 't', 'T', 'true',  'TRUE'].to_set
-  FALSE_VALUES = [false, 0, '0', 'f', 'F', 'false', 'FALSE'].to_set
-
   describe Predicate do
 
     before do
@@ -23,12 +20,18 @@ module Ransack
     end
 
     describe 'eq' do
-      it 'generates an equality condition for boolean true values' do
-        test_boolean_equality_for(true)
+      it 'generates an equality condition for boolean true' do
+        @s.awesome_eq = true
+        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
+        expect(@s.result.to_sql).to match /#{field} = #{
+          ActiveRecord::Base.connection.quoted_true}/
       end
 
-      it 'generates an equality condition for boolean false values' do
-        test_boolean_equality_for(false)
+      it 'generates an equality condition for boolean false' do
+        @s.awesome_eq = false
+        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
+        expect(@s.result.to_sql).to match /#{field} = #{
+          ActiveRecord::Base.connection.quoted_false}/
       end
 
       it 'does not generate a condition for nil' do
@@ -246,57 +249,11 @@ module Ransack
         expect(@s.result.to_sql).to match /#{field} = #{
           ActiveRecord::Base.connection.quoted_true}/
       end
-
-      it 'generates an inequality condition for boolean true' do
-        @s.awesome_true = false
-        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
-        expect(@s.result.to_sql).to match /#{field} != #{
-          ActiveRecord::Base.connection.quoted_true}/
-      end
-    end
-
-    describe 'not_true' do
-      it 'generates an inequality condition for boolean true' do
-        @s.awesome_not_true = true
-        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
-        expect(@s.result.to_sql).to match /#{field} != #{
-          ActiveRecord::Base.connection.quoted_true}/
-      end
-
-      it 'generates an equality condition for boolean true' do
-        @s.awesome_not_true = false
-        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
-        expect(@s.result.to_sql).to match /#{field} = #{
-          ActiveRecord::Base.connection.quoted_true}/
-      end
     end
 
     describe 'false' do
       it 'generates an equality condition for boolean false' do
         @s.awesome_false = true
-        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
-        expect(@s.result.to_sql).to match /#{field} = #{
-          ActiveRecord::Base.connection.quoted_false}/
-      end
-
-      it 'generates an inequality condition for boolean false' do
-        @s.awesome_false = false
-        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
-        expect(@s.result.to_sql).to match /#{field} != #{
-          ActiveRecord::Base.connection.quoted_false}/
-      end
-    end
-
-    describe 'not_false' do
-      it 'generates an inequality condition for boolean false' do
-        @s.awesome_not_false = true
-        field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
-        expect(@s.result.to_sql).to match /#{field} != #{
-          ActiveRecord::Base.connection.quoted_false}/
-      end
-
-      it 'generates an equality condition for boolean false' do
-        @s.awesome_not_false = false
         field = "#{quote_table_name("people")}.#{quote_column_name("awesome")}"
         expect(@s.result.to_sql).to match /#{field} = #{
           ActiveRecord::Base.connection.quoted_false}/
@@ -309,12 +266,6 @@ module Ransack
         field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
         expect(@s.result.to_sql).to match /#{field} IS NULL/
       end
-
-      it 'generates a value IS NOT NULL query when assigned false' do
-        @s.name_null = false
-        field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
-        expect(@s.result.to_sql).to match /#{field} IS NOT NULL/
-      end
     end
 
     describe 'not_null' do
@@ -322,12 +273,6 @@ module Ransack
         @s.name_not_null = true
         field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
         expect(@s.result.to_sql).to match /#{field} IS NOT NULL/
-      end
-
-      it 'generates a value IS NULL query when assigned false' do
-        @s.name_not_null = false
-        field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
-        expect(@s.result.to_sql).to match /#{field} IS NULL/
       end
     end
 
@@ -337,12 +282,6 @@ module Ransack
         field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
         expect(@s.result.to_sql).to match /#{field} IS NOT NULL AND #{field} != ''/
       end
-
-      it %q[generates a value IS NULL OR value = '' query when assigned false] do
-        @s.name_present = false
-        field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
-        expect(@s.result.to_sql).to match /#{field} IS NULL OR #{field} = ''/
-      end
     end
 
     describe 'blank' do
@@ -351,38 +290,6 @@ module Ransack
         field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
         expect(@s.result.to_sql).to match /#{field} IS NULL OR #{field} = ''/
       end
-
-      it %q[generates a value IS NOT NULL AND value != '' query when assigned false] do
-        @s.name_blank = false
-        field = "#{quote_table_name("people")}.#{quote_column_name("name")}"
-        expect(@s.result.to_sql).to match /#{field} IS NOT NULL AND #{field} != ''/
-      end
     end
-
-    private
-
-      def test_boolean_equality_for(boolean_value)
-        query = expected_query(boolean_value)
-        test_values_for(boolean_value).each do |value|
-          s = Search.new(Person, awesome_eq: value)
-          expect(s.result.to_sql).to match query
-        end
-      end
-
-      def test_values_for(boolean_value)
-        case boolean_value
-        when true
-          TRUE_VALUES
-        when false
-          FALSE_VALUES
-        end
-      end
-
-      def expected_query(value, attribute = 'awesome', operator = '=')
-        field = "#{quote_table_name("people")}.#{quote_column_name(attribute)}"
-        quoted_value = ActiveRecord::Base.connection.quote(value)
-        /#{field} #{operator} #{quoted_value}/
-      end
-    end
-
+  end
 end

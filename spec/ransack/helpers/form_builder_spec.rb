@@ -24,10 +24,9 @@ module Ransack
 
       it 'selects previously-entered time values with datetime_select' do
         date_values = %w(2011 1 2 03 04 05)
-      # @s.created_at_eq = date_values # This works in Rails 4.x but not 3.x
-        @s.created_at_eq = [2011, 1, 2, 3, 4, 5] # so we have to do this
+        @s.created_at_eq = date_values
         html = @f.datetime_select(
-          :created_at_eq, :use_month_numbers => true, :include_seconds => true
+          :created_at_eq, use_month_numbers: true, include_seconds: true
           )
         date_values.each { |val| expect(html).to include date_select_html(val) }
       end
@@ -71,17 +70,13 @@ module Ransack
 
       describe '#sort_link' do
         it 'sort_link for ransack attribute' do
-          sort_link = @f.sort_link :name, :controller => 'people'
-          if ActiveRecord::VERSION::STRING =~ /^3\.[1-2]\./
-            expect(sort_link).to match /people\?q%5Bs%5D=name\+asc/
-          else
-            expect(sort_link).to match /people\?q(%5B|\[)s(%5D|\])=name\+asc/
-          end
+          sort_link = @f.sort_link :name, controller: 'people'
+          expect(sort_link).to match /people\?q(%5B|\[)s(%5D|\])=name\+asc/
           expect(sort_link).to match /sort_link/
           expect(sort_link).to match /Full Name<\/a>/
         end
         it 'sort_link for common attribute' do
-          sort_link = @f.sort_link :id, :controller => 'people'
+          sort_link = @f.sort_link :id, controller: 'people'
           expect(sort_link).to match /id<\/a>/
         end
       end
@@ -104,14 +99,14 @@ module Ransack
         it 'returns ransackable attributes for associations with :associations' do
           attributes = Person.ransackable_attributes +
             Article.ransackable_attributes.map { |a| "articles_#{a}" }
-          html = @f.attribute_select(:associations => ['articles'])
+          html = @f.attribute_select(associations: ['articles'])
           expect(html.split(/\n/).size).to eq(attributes.size)
           attributes.each do |attribute|
             expect(html).to match /<option value="#{attribute}">/
           end
         end
         it 'returns option groups for base and associations with :associations' do
-          html = @f.attribute_select(:associations => ['articles'])
+          html = @f.attribute_select(associations: ['articles'])
           [Person, Article].each do |model|
             expect(html).to match /<optgroup label="#{model}">/
           end
@@ -126,19 +121,19 @@ module Ransack
           end
         end
         it 'filters predicates with single-value :only' do
-          html = @f.predicate_select :only => 'eq'
+          html = @f.predicate_select only: 'eq'
           Predicate.names.reject { |k| k =~ /^eq/ }.each do |key|
             expect(html).not_to match /<option value="#{key}">/
           end
         end
         it 'filters predicates with multi-value :only' do
-          html = @f.predicate_select :only => [:eq, :lt]
+          html = @f.predicate_select only: [:eq, :lt]
           Predicate.names.reject { |k| k =~ /^(eq|lt)/ }.each do |key|
             expect(html).not_to match /<option value="#{key}">/
           end
         end
         it 'excludes compounds when compounds: false' do
-          html = @f.predicate_select :compounds => false
+          html = @f.predicate_select compounds: false
           Predicate.names.select { |k| k =~ /_(any|all)$/ }.each do |key|
             expect(html).not_to match /<option value="#{key}">/
           end
@@ -168,11 +163,7 @@ module Ransack
         # Starting from Rails 4.2, the date_select html attributes are no longer
         # `sort`ed (for a speed gain), so the tests have to be different:
         def date_select_html(val)
-          if ::ActiveRecord::VERSION::STRING >= '4.2'
-            %(<option value="#{val}" selected="selected">#{val}</option>)
-          else
-            %(<option selected="selected" value="#{val}">#{val}</option>)
-          end
+          %(<option value="#{val}" selected="selected">#{val}</option>)
         end
 
     end
